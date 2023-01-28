@@ -13,6 +13,10 @@ world_df = df_pivot
 # join in types data
 world_df = df_pivot.merge(types_df, how = 'inner', on='metric')
 
+# latest metric in group
+world_df["latest_metric"] = world_df.groupby(["country","metric_type","metric_no_year"])["year_2025_if latest"].rank(method="first", ascending=False)
+world_df["latest_metric"] = np.where(world_df["latest_metric"]==1,world_df["latest_metric"],0)
+
 # create ranks depending on high/low
 world_df["metric_rank_high"] = world_df.groupby(["metric"])["value"].rank(method="min", ascending=False)
 world_df["metric_rank_low"] = world_df.groupby(["metric"])["value"].rank(method="min", ascending=True)
@@ -40,9 +44,13 @@ world_df["country_weaknesses_order_by_broad_metric"] = world_df.groupby(["countr
 # build in reccomendations
 recc_df = df_pivot.merge(types_df, how = 'inner', on='metric')
 
+# latest metric in group
+recc_df["latest_metric"] = recc_df.groupby(["country","metric_type","metric_no_year"])["year_2025_if latest"].rank(method="first", ascending=False)
+recc_df["latest_metric"] = np.where(recc_df["latest_metric"]==1,recc_df["latest_metric"],0)
+
 # create target_metric
-target_df = recc_df[['country','metric','metric_no_year','metric_type','value']]
-target_df.columns = ['country','target_metric','target_metric_no_year','target_metric_type','target_value']
+target_df = recc_df[['country','metric','metric_no_year','metric_type','latest_metric','value']]
+target_df.columns = ['country','target_metric','target_metric_no_year','target_metric_type','latest_target_metric','target_value']
 
 recc_df = recc_df.merge(target_df, how = 'inner', on = 'country')
 
@@ -51,6 +59,12 @@ recc_df = recc_df.loc[recc_df['metric_type'] != recc_df['target_metric_type']]
 
 recc_df = recc_df.loc[recc_df['metric_type'] != 'descriptive']
 recc_df = recc_df.loc[recc_df['target_metric_type'] != 'descriptive']
+
+
+recc_df = recc_df.merge(corr_df_pivot, how = 'inner', on = ['metric','target_metric'])
+
+
+#recc_df["correlation_avg_broad_to_broad"] = recc_df.groupby(["country","metric_no_year","target_metric_no_year"])["correlation"].mean()
 
 print(recc_df)
 
@@ -102,3 +116,5 @@ print(recc_df)
 print(world_df)
 world_df = world_df.drop_duplicates()
 world_df.to_csv('data/world_df.csv', index = False)
+
+recc_df.to_csv('data/recommendations_df.csv', index = False)
